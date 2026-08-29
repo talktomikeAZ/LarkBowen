@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lark Bowen - Music & Repertoire</title>
+
+  <!-- PapaParse for live Google Sheet CSV parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <style>
+    :root {
+      --primary-color: #60a5fa;
+      --primary-accent: #3b82f6;
+      --header-bg: #0f172a;
+      --panel-bg: #1e293b;
+      --page-bg: #0b0f19;
+      --border-color: #334155;
+      --table-header-bg: #0f172a;
+      --table-header-text: #f8fafc;
+      --row-even: #1e293b;
+      --row-odd: #172033;
+      --row-hover: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --badge-bg: #334155;
+      --badge-text: #e2e8f0;
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--page-bg);
+      color: var(--text-main);
+      padding-bottom: 50px;
+      min-height: 100vh;
+    }
+
+    /* Top Navigation Header */
+    header {
+      background: var(--header-bg);
+      color: #ffffff;
+      padding: 1rem 1.25rem;
+      border-bottom: 3px solid var(--primary-accent);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    /* Hamburger Menu Button */
+    .menu-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .menu-btn:hover {
+      background: var(--panel-bg);
+      border-color: var(--primary-accent);
+    }
+
+    .brand-title h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #f8fafc;
+    }
+
+    .brand-title p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .sync-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #38bdf8;
+    }
+
+    .sync-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: #22c55e;
+      box-shadow: 0 0 6px #22c55e;
+    }
+
+    /* Slide-out Navigation Drawer */
+    .drawer-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(2px);
+      z-index: 200;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+
+    .drawer-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .drawer {
+      position: fixed;
+      top: 0;
+      left: -280px;
+      width: 280px;
+      height: 100%;
+      background: var(--header-bg);
+      border-right: 1px solid var(--border-color);
+      z-index: 210;
+      transition: left 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 4px 0 16px rgba(0, 0, 0, 0.5);
+    }
+
+    .drawer.active {
+      left: 0;
+    }
+
+    .drawer-header {
+      padding: 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .drawer-header h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--primary-color);
+    }
+
+    .close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.25rem;
+      cursor: pointer;
+    }
+
+    .close-btn:hover {
+      color: var(--text-main);
+    }
+
+    .drawer-menu {
+      list-style: none;
+      padding: 1rem 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .drawer-menu li button {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .drawer-menu li button i {
+      font-size: 1.2rem;
+      color: var(--primary-color);
+    }
+
+    .drawer-menu li button:hover,
+    .drawer-menu li button.active {
+      background: var(--panel-bg);
+      color: #ffffff;
+    }
+
+    /* Container & Section Switching */
+    .container {
+      max-width: 1100px;
+      margin: 1.5rem auto 0 auto;
+      padding: 0 1rem;
+    }
+
+    .view-section {
+      display: none;
+    }
+
+    .view-section.active {
+      display: block;
+    }
+
+    /* Controls Panel */
+    .dashboard-panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .panel-header {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    @media (min-width: 768px) {
+      .controls-grid {
+        grid-template-columns: 1.5fr 1fr 1fr;
+      }
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .control-group label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .control-group input,
+    .control-group select {
+      padding: 9px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      background-color: #0f172a;
+      color: var(--text-main);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .control-group input:focus,
+    .control-group select:focus {
+      border-color: var(--primary-accent);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+    }
+
+    .filter-options-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 1rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid var(--border-color);
+      font-size: 0.85rem;
+    }
+
+    .toggle-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    .results-count {
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* Song Table */
+    .table-container {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      background-color: var(--table-header-bg);
+      color: var(--table-header-text);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 12px 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    td {
+      padding: 12px 16px;
+      font-size: 0.92rem;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    tr:nth-child(even) { background-color: var(--row-even); }
+    tr:nth-child(odd) { background-color: var(--row-odd); }
+    tr:hover { background-color: var(--row-hover); }
+
+    .artist-cell {
+      font-weight: 600;
+      color: #f8fafc;
+      width: 38%;
+    }
+
+    .song-cell {
+      color: #cbd5e1;
+      width: 42%;
+    }
+
+    .tag-cell {
+      width: 20%;
+      text-align: right;
+    }
+
+    .genre-badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: var(--badge-bg);
+      color: var(--badge-text);
+      margin: 2px 2px;
+      white-space: nowrap;
+      border: 1px solid #475569;
+    }
+
+    .not-ready-badge {
+      background: #7f1d1d;
+      color: #fca5a5;
+      border-color: #991b1b;
+    }
+
+    /* Calendar Responsive Embed */
+    .calendar-container {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 1rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+
+    .calendar-frame-wrap {
+      position: relative;
+      padding-bottom: 75%;
+      height: 0;
+      overflow: hidden;
+      border-radius: 6px;
+    }
+
+    @media (min-width: 768px) {
+      .calendar-frame-wrap {
+        padding-bottom: 600px;
+        height: 600px;
+      }
+    }
+
+    .calendar-frame-wrap iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      filter: invert(0.9) hue-rotate(180deg);
+    }
+
+    /* About View Card */
+    .about-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 2rem 1.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .about-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 1rem;
+    }
+
+    .about-avatar {
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      border: 3px solid var(--primary-accent);
+      object-fit: cover;
+      background: #0f172a;
+    }
+
+    .about-header h2 {
+      font-size: 1.6rem;
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .about-header span {
+      color: var(--primary-color);
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .about-body {
+      color: #cbd5e1;
+      line-height: 1.7;
+      font-size: 0.95rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    /* Mobile Table Overrides */
+    @media (max-width: 640px) {
+      .table-container table, 
+      .table-container thead, 
+      .table-container tbody, 
+      .table-container th, 
+      .table-container td, 
+      .table-container tr {
+        display: block;
+      }
+
+      .table-container thead { display: none; }
+
+      .table-container tr {
+        margin-bottom: 10px;
+        border-bottom: 2px solid var(--border-color);
+        padding: 12px;
+      }
+
+      .table-container td {
+        padding: 4px 0;
+        border: none;
+        width: 100% !important;
+        text-align: left !important;
+      }
+
+      .artist-cell {
+        font-size: 0.88rem;
+        color: var(--text-muted);
+      }
+
+      .song-cell {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 4px;
+      }
+
+      .tag-cell {
+        margin-top: 6px;
+      }
+    }
+
+    .empty-message {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Slide-out Drawer Menu -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="toggleMenu(false)"></div>
+  <aside class="drawer" id="drawer">
+    <div class="drawer-header">
+      <h2>Menu</h2>
+      <button class="close-btn" onclick="toggleMenu(false)" aria-label="Close Menu">
+        <i class="ph ph-x"></i>
+      </button>
+    </div>
+    <ul class="drawer-menu">
+      <li>
+        <button class="active" id="nav-repertoire" onclick="switchView('repertoire')">
+          <i class="ph ph-music-notes"></i> Song Lists
+        </button>
+      </li>
+      <li>
+        <button id="nav-calendar" onclick="switchView('calendar')">
+          <i class="ph ph-calendar"></i> Calendar
+        </button>
+      </li>
+      <li>
+        <button id="nav-about" onclick="switchView('about')">
+          <i class="ph ph-user"></i> About
+        </button>
+      </li>
+    </ul>
+  </aside>
+
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <button class="menu-btn" onclick="toggleMenu(true)" aria-label="Open Navigation">
+          <i class="ph ph-list"></i>
+        </button>
+        <div class="brand-title">
+          <h1 id="pageTitle">Lark Bowen Repertoire</h1>
+          <p id="pageSubtitle">Live Performance Songs & Repertoire</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="sync-pill" id="syncStatus">
+          <span class="sync-dot"></span> Live Sync Enabled
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Areas -->
+  <main class="container">
+
+    <!-- 1. REPERTOIRE VIEW -->
+    <section id="view-repertoire" class="view-section active">
+      <!-- Control Panel -->
+      <section class="dashboard-panel">
+        <div class="panel-header">
+          <i class="ph ph-sliders-horizontal"></i> Dashboard Controls
+        </div>
+
+        <div class="controls-grid">
+          <div class="control-group">
+            <label for="searchInput"><i class="ph ph-magnifying-glass"></i> Search (Artist or Song)</label>
+            <input 
+              type="text" 
+              id="searchInput" 
+              placeholder="Type artist name or song title..." 
+              autocomplete="off" 
+            />
+          </div>
+
+          <div class="control-group">
+            <label for="genreSelect"><i class="ph ph-music-note"></i> Genre</label>
+            <select id="genreSelect">
+              <option value="ALL">All Genres</option>
+              <option value="70's and before">70's and before</option>
+              <option value="80's">80's</option>
+              <option value="90's">90's</option>
+              <option value="Adult Contemporary">Adult Contemporary</option>
+              <option value="Alternative/Indie">Alternative/Indie</option>
+              <option value="Animated">Animated</option>
+              <option value="Blues/Soft Rock">Blues/Soft Rock</option>
+              <option value="Broadway">Broadway</option>
+              <option value="Classical">Classical</option>
+              <option value="Country">Country</option>
+              <option value="Dance/Electronic">Dance/Electronic</option>
+              <option value="Holidays">Holidays</option>
+              <option value="Love">Love</option>
+              <option value="Movies">Movies</option>
+              <option value="Pop">Pop</option>
+              <option value="R&B">R&B</option>
+              <option value="Religious">Religious</option>
+              <option value="Risqũe">Risqũe</option>
+              <option value="Rock">Rock</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="sortSelect"><i class="ph ph-arrows-down-up"></i> Sort Options</label>
+            <select id="sortSelect">
+              <option value="artist-asc">Artist (A → Z)</option>
+              <option value="artist-desc">Artist (Z → A)</option>
+              <option value="song-asc">Song Title (A → Z)</option>
+              <option value="song-desc">Song Title (Z → A)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-options-bar">
+          <label class="toggle-label">
+            <input type="checkbox" id="hideNotReady" checked />
+            Hide "Not Ready" songs
+          </label>
+          <span class="results-count" id="resultsCount">Loading songs...</span>
+        </div>
+      </section>
+
+      <!-- Song Table -->
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Artist</th>
+              <th>Song Title</th>
+              <th style="text-align: right;">Tags / Genre</th>
+            </tr>
+          </thead>
+          <tbody id="songTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 2. CALENDAR VIEW -->
+    <section id="view-calendar" class="view-section">
+      <div class="calendar-container">
+        <div class="panel-header">
+          <i class="ph ph-calendar-check"></i> Event Schedule & Bookings
+        </div>
+        <div class="calendar-frame-wrap">
+          <iframe src="https://calendar.google.com/calendar/embed?src=lark.bowen%40gmail.com&ctz=America%2FPhoenix"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. ABOUT VIEW -->
+    <section id="view-about" class="view-section">
+      <div class="about-card">
+        <div class="about-header">
+          <img 
+            src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=400&q=80" 
+            alt="Lark Bowen" 
+            class="about-avatar" 
+          />
+          <div>
+            <h2>Lark Bowen</h2>
+            <span>Vocalist & Performing Artist</span>
+          </div>
+        </div>
+        <div class="about-body">
+          <p>
+            Welcome to the official repertoire and booking portal for Lark Bowen. Explore our comprehensive song list spanning acoustic ballads, classic rock, modern pop, Broadway, and genre-bending sets tailored for any venue or event.
+          </p>
+          <p>
+            For bookings, private events, weddings, or venue inquiries, please check the live calendar schedule or reach out directly at <strong>lark.bowen@gmail.com</strong>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSYoNFMsjKUWEcHlDlBuKYvPgbaG3IFtTJ-An1rGdAyc5IZRKNpe_wMSkdH0xs8QBzlk-AELcqn3i7N/pub?gid=0&single=true&output=csv";
+
+    const KNOWN_GENRES = [
+      "Pop", "Rock", "80's", "Country", "Risqũe", "Holidays",
+      "Broadway", "Movies", "90's", "Animated", "Alternative/Indie",
+      "R&B", "Adult Contemporary", "Love", "Blues/Soft Rock",
+      "70's and before", "Classical", "Dance/Electronic", "Religious"
+    ];
+
+    let masterSongData = [];
+
+    // DOM Elements
+    const drawer = document.getElementById('drawer');
+    const drawerOverlay = document.getElementById('drawerOverlay');
+    const pageTitle = document.getElementById('pageTitle');
+    const pageSubtitle = document.getElementById('pageSubtitle');
+    const searchInput = document.getElementById('searchInput');
+    const genreSelect = document.getElementById('genreSelect');
+    const sortSelect = document.getElementById('sortSelect');
+    const hideNotReady = document.getElementById('hideNotReady');
+    const songTableBody = document.getElementById('songTableBody');
+    const resultsCount = document.getElementById('resultsCount');
+    const syncStatus = document.getElementById('syncStatus');
+
+    // Menu Toggle
+    function toggleMenu(open) {
+      if (open) {
+        drawer.classList.add('active');
+        drawerOverlay.classList.add('active');
+      } else {
+        drawer.classList.remove('active');
+        drawerOverlay.classList.remove('active');
+      }
+    }
+
+    // View Switching
+    function switchView(viewName) {
+      document.querySelectorAll('.view-section').forEach(section => {
+        section.classList.remove('active');
+      });
+      document.querySelectorAll('.drawer-menu button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+
+      const activeView = document.getElementById(`view-${viewName}`);
+      const activeBtn = document.getElementById(`nav-${viewName}`);
+      if (activeView) activeView.classList.add('active');
+      if (activeBtn) activeBtn.classList.add('active');
+
+      if (viewName === 'repertoire') {
+        pageTitle.textContent = "Lark Bowen Repertoire";
+        pageSubtitle.textContent = "Live Performance Songs & Repertoire";
+      } else if (viewName === 'calendar') {
+        pageTitle.textContent = "Calendar";
+        pageSubtitle.textContent = "Upcoming Shows, Events & Availability";
+      } else if (viewName === 'about') {
+        pageTitle.textContent = "About";
+        pageSubtitle.textContent = "Artist Bio & Contact Information";
+      }
+
+      toggleMenu(false);
+    }
+
+    // Google Sheet Fetcher
+    function fetchMasterSheet() {
+      syncStatus.innerHTML = `<span class="sync-dot" style="background:#eab308; box-shadow:0 0 6px #eab308;"></span> Syncing...`;
+
+      Papa.parse(GOOGLE_SHEET_CSV_URL, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          parseRows(results.data);
+          syncStatus.innerHTML = `<span class="sync-dot"></span> Live Synced`;
+        },
+        error: function(err) {
+          console.error("Fetch failed:", err);
+          syncStatus.innerHTML = `<span class="sync-dot" style="background:#ef4444; box-shadow:0 0 6px #ef4444;"></span> Sync Error`;
+          resultsCount.textContent = "Error loading data from Google Sheet.";
+        }
+      });
+    }
+
+    function parseRows(rows) {
+      masterSongData = rows.map(row => {
+        const activeGenres = [];
+        KNOWN_GENRES.forEach(genre => {
+          if (row[genre] && row[genre].toString().trim().toUpperCase() === "TRUE") {
+            activeGenres.push(genre);
+          }
+        });
+
+        const isNotReady = (row["Not Ready"] && row["Not Ready"].toString().trim().toUpperCase() === "TRUE");
+
+        return {
+          artist: row["Artist"] ? row["Artist"].trim() : "",
+          title: row["Song Title"] ? row["Song Title"].trim() : (row["Song"] ? row["Song"].trim() : ""),
+          genres: activeGenres,
+          notReady: isNotReady
+        };
+      }).filter(item => item.title !== "" || item.artist !== "");
+
+      render();
+    }
+
+    function render() {
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      const selectedGenre = genreSelect.value;
+      const sortMode = sortSelect.value;
+      const shouldHideNotReady = hideNotReady.checked;
+
+      let filtered = masterSongData.filter(item => {
+        if (shouldHideNotReady && item.notReady) return false;
+        if (selectedGenre !== "ALL" && !item.genres.includes(selectedGenre)) return false;
+        if (searchTerm) {
+          const matchArtist = item.artist.toLowerCase().includes(searchTerm);
+          const matchSong = item.title.toLowerCase().includes(searchTerm);
+          return matchArtist || matchSong;
+        }
+        return true;
+      });
+
+      filtered.sort((a, b) => {
+        switch (sortMode) {
+          case 'artist-asc':
+            return a.artist.localeCompare(b.artist) || a.title.localeCompare(b.title);
+          case 'artist-desc':
+            return b.artist.localeCompare(a.artist) || a.title.localeCompare(b.title);
+          case 'song-asc':
+            return a.title.localeCompare(b.title) || a.artist.localeCompare(b.artist);
+          case 'song-desc':
+            return b.title.localeCompare(a.title) || a.artist.localeCompare(b.artist);
+          default:
+            return 0;
+        }
+      });
+
+      resultsCount.textContent = `Showing ${filtered.length} song${filtered.length === 1 ? '' : 's'}`;
+
+      if (filtered.length === 0) {
+        songTableBody.innerHTML = `
+          <tr>
+            <td colspan="3" class="empty-message">
+              No matching songs found in repertoire.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      songTableBody.innerHTML = filtered.map(song => `
+        <tr>
+          <td class="artist-cell">${escapeHtml(song.artist)}</td>
+          <td class="song-cell">${escapeHtml(song.title)}</td>
+          <td class="tag-cell">
+            ${song.notReady ? '<span class="genre-badge not-ready-badge">Not Ready</span>' : ''}
+            ${song.genres.map(g => `<span class="genre-badge">${escapeHtml(g)}</span>`).join('')}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>"']/g, function(m) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;'
+        }[m];
+      });
+    }
+
+    searchInput.addEventListener('input', render);
+    genreSelect.addEventListener('change', render);
+    sortSelect.addEventListener('change', render);
+    hideNotReady.addEventListener('change', render);
+
+    fetchMasterSheet();
+  </script>
+</body>
+</html>
